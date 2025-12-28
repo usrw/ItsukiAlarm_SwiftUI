@@ -1,0 +1,42 @@
+name: Build IPA (unsigned for jailbroken)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build archive (NO SIGNING)
+        run: |
+          xcodebuild clean archive \
+            -project *.xcodeproj \
+            -scheme ItsukiAlarm \
+            -archivePath build/App.xcarchive \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Create unsigned IPA
+        run: |
+          APP_PATH=$(find build/App.xcarchive -name "*.app" | head -1)
+
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+
+          zip -r ItsukiAlarm-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: ItsukiAlarm-unsigned.ipa
